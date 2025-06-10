@@ -13,6 +13,7 @@ class DAQBase:
         self.data = np.zeros(self.data_shape)
 
     def connect(self):
+        print('lol')
         raise NotImplementedError
 
     def disconnect(self):

@@ -68,7 +68,8 @@ class RealDAQ(DAQBase):
         return self.status
 
     def get_scan_status(self):
-        return self.ai_device.get_scan_status()
+        status, _ = self.ai_device.get_scan_status()
+        return status
 
     def scan_stop(self):
         if self.ai_device:
