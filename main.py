@@ -9,7 +9,7 @@ from daq.dummy import DummyDAQ
 from daq.real import RealDAQ
 
 # ----------- Parameters (all numbers here for easy change) ----------
-USE_DUMMY = True
+USE_DUMMY = False
 SAMPLES_PER_CH = 6100
 SAMPLE_RATE = 500_000
 N_CHIRP = 20
@@ -21,7 +21,8 @@ CHIRP_REAL_DURATION = 0.617016e-3
 PLOT_WIDTH = 700
 PLOT_HEIGHT = 700
 UPDATE_INTERVAL = 0.1  # seconds, for 20Hz
-DELAY = -0.0112
+DELAY = -0.0116
+# DELAY = -0
 
 # --- Set desired axis ranges here ---
 X_RANGE_MIN = -0.5  # example values, set as needed
@@ -51,7 +52,10 @@ def get_daq():
 class DAQManager:
     def __init__(self, daq):
         self.daq = daq
-        self.data_shape = (int(SAMPLES_PER_CH / N_CHIRP / 2 + 1), N_CHIRP)
+        self.data_shape = (
+            int(SAMPLES_PER_CH / N_CHIRP / 2 + 1) * RANGE_FFT_INTERP,
+            N_CHIRP * VELOCITY_FFT_INTERP,
+        )
         self.data = np.zeros(self.data_shape)
         self.data_chirp = np.zeros(int(SAMPLES_PER_CH / N_CHIRP))
         self.stop_event = asyncio.Event()
@@ -64,7 +68,8 @@ class DAQManager:
         # Interpolated sizes
         self.fft_size = chirp_len * RANGE_FFT_INTERP
         self.n_chirp = n_chirp * VELOCITY_FFT_INTERP
-        self.freq_bins = np.fft.fftfreq(self.fft_size, 1 / self.fft_size)
+        # self.freq_bins = np.fft.fftfreq(self.fft_size, 1 / self.fft_size)
+        self.freq_bins = np.fft.fftfreq(chirp_len, 1 / chirp_len)
         self.window_time = np.hamming(chirp_len)[:, np.newaxis]
         self.window_chirp = np.hamming(n_chirp)[np.newaxis, :]
         self._fft_initialized = True
@@ -112,11 +117,11 @@ class DAQManager:
                 arr = np.zeros((chirp_len, N_CHIRP))
 
             voltages = arr
-            # Vp = np.fft.fft(voltages, axis=0, n=self.fft_size)
-            # for i in range(voltages.shape[1]):
-            #     Vp[:, i] *= np.exp(-1j * self.freq_bins * 2 * np.pi * DELAY * i)
-            # voltages_corr = np.real(np.fft.ifft(Vp, axis=0))
-            voltages_corr = voltages
+            Vp = np.fft.fft(voltages, axis=0)
+            for i in range(voltages.shape[1]):
+                Vp[:, i] *= np.exp(-1j * self.freq_bins * 2 * np.pi * DELAY * i)
+            voltages_corr = np.real(np.fft.ifft(Vp, axis=0))
+            # voltages_corr = voltages
             windowed = (
                 voltages_corr[:chirp_len, :] * self.window_time
             )  # use original window size
@@ -129,13 +134,14 @@ class DAQManager:
             data = np.abs(VV)
             data = data - np.min(data)
             data = data / np.max(data)
-            data[data < 1e-3] = 0
+            data[data < 1e-2] = 1e-2
+            # data = np.log10(data)
             # Update self.data to the new size
             self.data = data
             temp = (
                 np.real(
                     np.fft.irfft(
-                        np.fft.rfft(voltages_corr[:, 0]),
+                        np.fft.rfft(voltages_corr[:, 1]),
                         int(SAMPLES_PER_CH / N_CHIRP * CHIRP_FFT_INTERP),
                     )
                 )
@@ -179,6 +185,9 @@ class DAQManager:
                     fig2_plot.data[0].y = self.data_chirp
                 plot_widget.update()
                 plot2_widget.update()
+            except Exception as e:
+                print(f"h: {e}")
+
             finally:
                 self.update_in_progress = False
             await asyncio.sleep(UPDATE_INTERVAL)
@@ -236,6 +245,7 @@ async def main():
                     contours=dict(coloring="fill"),
                     showscale=False,
                     line_smoothing=0.85,
+                    ncontours=20,
                 )
             ]
         )
