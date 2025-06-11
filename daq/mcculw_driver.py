@@ -56,6 +56,7 @@ class MCCULWDAQ(DAQBase):
         if ul is None:
             raise RuntimeError("MCCULW library not available")
         try:
+            ul.set_trigger(self.board_num, 12, 0 ,0)
             rate = ul.a_in_scan(
                 self.board_num,
                 0,
@@ -64,7 +65,7 @@ class MCCULWDAQ(DAQBase):
                 self.rate,
                 self.range,
                 self.memhandle,
-                (ScanOptions.EXTTRIGGER | ScanOptions.SCALEDATA)
+                (ScanOptions.BACKGROUND | ScanOptions.EXTTRIGGER | ScanOptions.SCALEDATA)
             )
         except ULError as e:
             raise RuntimeError(f"Error starting scan: {e}")
@@ -74,7 +75,7 @@ class MCCULWDAQ(DAQBase):
         if ul is None:
             return Status.IDLE
         try:
-            status, _, _ = ul.get_status(self.board_num, 0)
+            status, _, _ = ul.get_status(self.board_num, 1)
             return status
         except ULError:
             return Status.IDLE

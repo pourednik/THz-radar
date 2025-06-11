@@ -5,8 +5,8 @@ from config import (
     VELOCITY_FFT_INTERP, DELAY, CHIRP_FFT_INTERP, BANDWIDTH, CHIRP_REAL_DURATION, C
 )
 
-class ExperimentManager:  # Renamed from DAQManager
-    def __init__(self, daq, gen=None):
+class ExperimentManager:
+    def __init__(self, daq, gen):
         self.daq = daq
         self.gen = gen  # Optional generator instrument
         self.data_shape = (int(SAMPLES_PER_CH / N_CHIRP / 2 + 1) * RANGE_FFT_INTERP, N_CHIRP*VELOCITY_FFT_INTERP)
@@ -40,6 +40,8 @@ class ExperimentManager:  # Renamed from DAQManager
                 self.daq.scan_stop()
             self.daq.disconnect()
             self.daq.release()
+            self.gen.off()
+            self.gen.close()
         except Exception as e:
             print("Cleanup error:", e)
 
@@ -53,7 +55,10 @@ class ExperimentManager:  # Renamed from DAQManager
                     status = self.daq.get_scan_status()
                     await asyncio.sleep(0.001)
 
-                self.gen.fire()     # Fire after a_in_scan
+                if self.gen is not None:
+                    self.gen.connect()  # Ensure generator is connected
+                    self.gen.fire()     # Fire after a_in_scan
+                    self.gen.close()    # Close generator connection
                 
                 status = self.daq.get_scan_status()
                 while status != 0 and not self.stop_event.is_set():
