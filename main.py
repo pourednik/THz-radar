@@ -20,6 +20,8 @@ from config import (
     BANDWIDTH,
     CHIRP_REAL_DURATION,
     C,
+    USE_DUMMY,
+    USE_WINDOWS,
 )
 
 from experiment_manager import ExperimentManager
@@ -82,7 +84,8 @@ async def main():
     # --- Initialize generator after figures ---
     gen = GenInstrument()
     chirp_t = 0.6e-3  # Set this appropriately
-    BW = 200e6       # Set this appropriately
+    chirp_t = 0.2e-3  # Set this appropriately
+    BW = 140e6       # Set this appropriately
 
     gen.init(chirp_t, BW)
 

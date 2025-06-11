@@ -21,7 +21,7 @@ class ExperimentManager:
     def _init_fft_windows(self, chirp_len, n_chirp):
         self.fft_size = chirp_len * RANGE_FFT_INTERP
         self.n_chirp = n_chirp * VELOCITY_FFT_INTERP
-        self.freq_bins = np.fft.fftfreq(chirp_len, 1 / chirp_len)
+        self.freq_bins = np.fft.fftfreq(chirp_len, 1/SAMPLE_RATE)
         self.window_time = np.hamming(chirp_len)[:, np.newaxis]
         self.window_chirp = np.hamming(n_chirp)[np.newaxis, :]
         self._fft_initialized = True
@@ -99,21 +99,24 @@ class ExperimentManager:
                 data = np.abs(VV)
                 data = data - np.min(data)
                 data = data / np.max(data)
-                data[data < 2e-2] = 2e-2
+                # data[data < 2e-2] = 2e-2
                 self.data = data
                 temp = (
                     np.real(
                         np.fft.irfft(
-                            np.fft.rfft(voltages_corr[:, 0]),
+                            np.fft.rfft(voltages_corr[:, 1]),
                             int(SAMPLES_PER_CH / N_CHIRP * CHIRP_FFT_INTERP),
                         )
                     )
-                    / voltages_corr[:, 0].size
-                    * 2**14
+                    # / voltages_corr[:, 1].size
+                    # * 2**14
                 )
-                temp = temp / np.max(temp)
+                temp = temp - np.sum(temp) / temp.size
+                temp = temp / np.max(np.abs(temp))
+                # print(temp.size)
+                # temp = temp / np.max(temp)
                 self.data_chirp = temp
-                await asyncio.sleep(0.01)
+                await asyncio.sleep(0.08)
         except Exception as e:
             # if self.gen is not None:
             #     self.gen.off()
