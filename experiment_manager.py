@@ -1,6 +1,7 @@
 import numpy as np
 import asyncio
 import matplotlib.pyplot as plt
+import time  # Import the time module
 
 
 class ExperimentManager:
@@ -87,15 +88,21 @@ class ExperimentManager:
         try:
             self.rate = self.daq.a_in_scan()
 
+            
+                
             status = self.daq.get_scan_status()
             while status != 1:
                 status = self.daq.get_scan_status()
                 await asyncio.sleep(0.001)
+            
+            # start_time = time.time()
 
             if self.gen is not None:
-                self.gen.connect()
                 self.gen.fire()
-                self.gen.close()
+            
+            # end_time = time.time()
+            # print(f"Processing time: {end_time - start_time:.4f} seconds")
+
 
             status = self.daq.get_scan_status()
             while status != 0 and not self.stop_event.is_set():
@@ -107,7 +114,7 @@ class ExperimentManager:
         except Exception as e:
             raise
 
-    def process_data(self, arr):
+    def process_data(self, arr, saved = 1):
         """Process data dynamically based on the given configuration."""
         chirp_len = int(self.config.CHIRP_DURATION * self.config.SAMPLE_RATE)
         if (
@@ -130,6 +137,8 @@ class ExperimentManager:
         for i in range(voltages.shape[1]):
             Vp[:, i] *= np.exp(-1j * self.freq_bins * 2 * np.pi * self.config.DELAY * i)
         voltages_corr = np.real(np.fft.ifft(Vp, axis=0))
+        if saved==0:
+            np.save('ref.npy', voltages_corr[:,-1])
 
         if self.config.RESAMPLE:
             try:
@@ -155,16 +164,18 @@ class ExperimentManager:
         data = data / np.max(data)
         self.data = data
 
-        temp = (
-            np.real(
-                np.fft.irfft(
-                    np.fft.rfft(voltages_corr[:, 1]),
-                    int(self.config.SAMPLES_PER_CH / self.config.N_CHIRP * self.config.CHIRP_FFT_INTERP),
-                )
-            )
-        )
+        # temp = (
+        #     np.real(
+        #         np.fft.irfft(
+        #             np.fft.rfft(voltages_corr[:, 1]),
+        #             int(self.config.SAMPLES_PER_CH / self.config.N_CHIRP * self.config.CHIRP_FFT_INTERP),
+        #         )
+        #     )
+        # )
+        temp = voltages_corr[:, 1]
         temp = temp - np.sum(temp) / temp.size
         temp = temp / np.max(np.abs(temp))
+        # print(temp)
         self.data_chirp = temp
 
     async def send_data(self):
@@ -172,16 +183,24 @@ class ExperimentManager:
         await asyncio.sleep(0.01)
 
     async def data_handling_loop(self):
+        saved = 0
+        self.gen.connect()
         try:
             while not self.stop_event.is_set():
+                # start_time = time.time()
                 arr = await self.collect_data()
-                self.process_data(arr)
-                await self.send_data()
+                # end_time = time.time()
+                # print(f"Processing time: {end_time - start_time:.4f} seconds")
+                self.process_data(arr, saved)
+                saved = 1
+                # await self.send_data()
         except asyncio.CancelledError:
             pass
         except Exception as e:
+            self.gen.close()
             raise
         finally:
+            self.gen.close()
             print("Data handling loop exited.")
 
     async def update_plot_loop(
@@ -219,4 +238,4 @@ class ExperimentManager:
             #     continue
             finally:
                 self.update_in_progress = False
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.05)

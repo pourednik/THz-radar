@@ -4,7 +4,7 @@ import plotly.graph_objs as go
 import asyncio
 import datetime
 
-from config import Config1, Config2, Config3, Config4
+from config import Config1, Config2, Config3, Config4, Config5, Config6
 from experiment_manager import ExperimentManager
 from gen import GenInstrument
 
@@ -59,6 +59,10 @@ async def update_config(selected_config):
         return Config3
     elif selected_config == "Config4":
         return Config4
+    elif selected_config == "Config5":
+        return Config5
+    elif selected_config == "Config6":
+        return Config6
 
 
 @ui.page("/")
@@ -107,7 +111,8 @@ async def main():
     with ui.row():
         ui.label("Select Configuration:")
         config_dropdown = ui.select(
-            options=["Config1", "Config2", "Config3", "Config4"],
+            # options=["Config1", "Config2", "Config3", "Config4", "Config5"],
+            options=["Config1", "Config4", "Config5", "Config6"],
             value="Config1",
             # on_change=on_config_change,
         )

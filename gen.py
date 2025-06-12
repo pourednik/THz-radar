@@ -86,14 +86,15 @@ class GenInstrument:
         self.close()
 
     def fire(self):
-        try:
-            self.connect()
-            self.gen.write(":TRIGger:IMMediate")
-            self.inst_ready()
-        except Exception as e:
-            raise
-        finally:
-            self.close()
+        # try:
+        #     self.connect()
+        #     self.gen.write(":TRIGger:IMMediate")
+        #     # self.inst_ready()
+        # except Exception as e:
+        #     raise
+        # finally:
+        #     self.close()
+        self.gen.write(":TRIGger:IMMediate")
 
     def off(self):
         self.connect()

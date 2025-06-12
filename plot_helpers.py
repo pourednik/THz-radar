@@ -7,7 +7,7 @@ from config import current_config
 def create_axes_and_masks(config):
     """Dynamically create axes and masks based on the given configuration."""
     x = np.fft.fftshift(np.fft.fftfreq(config.N_CHIRP * config.VELOCITY_FFT_INTERP, config.CHIRP_DURATION))
-    x *= config.C / (2 * config.F0)
+    x *= config.C / (2 * config.F0) * 1/1000 * 60 * 60
     y_full = np.fft.rfftfreq(
         int(config.SAMPLE_RATE * config.CHIRP_DURATION * config.RANGE_FFT_INTERP), 1 / config.SAMPLE_RATE
     )
@@ -41,9 +41,9 @@ def create_main_plot(x_plot, y, initial_Z):
 
 def add_grid_lines(fig_plot, x_limit, config):
     """Add grid lines dynamically based on the given configuration."""
-    for xv in np.arange(-0.4, 0.6, 0.1):
+    for xv in np.arange(-x_limit, x_limit, 2*x_limit/10):
         fig_plot.add_shape(type="line", x0=xv, x1=xv, y0=config.Y_RANGE_MIN, y1=config.Y_RANGE_MAX, line=dict(color="grey", width=1), layer="above")
-    for yv in np.arange(config.Y_RANGE_MIN, config.Y_RANGE_MAX, 0.2):
+    for yv in np.arange(config.Y_RANGE_MIN, config.Y_RANGE_MAX, (config.Y_RANGE_MAX - config.Y_RANGE_MIN) / 10):
         fig_plot.add_shape(type="line", x0=-x_limit, x1=x_limit, y0=yv, y1=yv, line=dict(color="gray", width=1), layer="above")
 
 
@@ -51,8 +51,8 @@ def style_main_plot(fig_plot, x_limit, y, config):
     """Style the main plot dynamically."""
     fig_plot.update_layout(
         hovermode=False,
-        xaxis=dict(range=[-x_limit, x_limit], title=dict(text="Geschwindigkeit (m/s)", font=dict(size=30)), tickfont=dict(size=30), showgrid=True),
-        yaxis=dict(range=[config.Y_RANGE_MIN, config.Y_RANGE_MAX], title=dict(text="Distanz (m)", font=dict(size=30)), tickfont=dict(size=30), tickmode="linear", tick0=1, dtick=0.4),
+        xaxis=dict(range=[-x_limit, x_limit], title=dict(text="Geschwindigkeit (km/h)", font=dict(size=30)), tickfont=dict(size=30), showgrid=True),
+        yaxis=dict(range=[config.Y_RANGE_MIN, config.Y_RANGE_MAX], title=dict(text="Distanz (m)", font=dict(size=30)), tickfont=dict(size=30), tickmode="linear", tick0=1, dtick=(config.Y_RANGE_MAX - config.Y_RANGE_MIN) / 10),
         width=config.PLOT_WIDTH,
         height=config.PLOT_HEIGHT,
         margin=dict(l=40, r=40, t=50, b=40),

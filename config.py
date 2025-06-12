@@ -13,8 +13,8 @@ class ConfigBase:
     UPDATE_INTERVAL = 0.05  # seconds, for 20Hz
 
     # Default ranges for axes
-    X_RANGE_MIN = -5
-    X_RANGE_MAX = 5
+    X_RANGE_MIN = -50
+    X_RANGE_MAX = 50
     Y_RANGE_MIN = 1
     Y_RANGE_MAX = 3
 
@@ -35,9 +35,12 @@ class Config1(ConfigBase):
     GEN_BW = 200e6
     BANDWIDTH = ConfigBase.calculate_bandwidth(GEN_BW)
     CHIRP_REAL_DURATION = 0.617016e-3
+    # RANGE_FFT_INTERP = 2
+    # VELOCITY_FFT_INTERP = 4
+    # CHIRP_FFT_INTERP = 128
     RANGE_FFT_INTERP = 2
     VELOCITY_FFT_INTERP = 4
-    CHIRP_FFT_INTERP = 128
+    CHIRP_FFT_INTERP = 1
     DELAY = CHIRP_DURATION - CHIRP_REAL_DURATION
     RESAMPLE = False
 
@@ -67,6 +70,8 @@ class Config3(ConfigBase):
     DELAY = CHIRP_DURATION - CHIRP_REAL_DURATION
     RESAMPLE = True
     t3 = np.load("./sampling_500ksps_15_1000MHz_1_5ms.npy")
+    Y_RANGE_MIN = 1.8
+    Y_RANGE_MAX = 2.2
 
 class Config4(ConfigBase):
     N_CHIRP = 20
@@ -77,9 +82,45 @@ class Config4(ConfigBase):
     CHIRP_REAL_DURATION = 0.2007509e-3
     RANGE_FFT_INTERP = 2
     VELOCITY_FFT_INTERP = 4
-    CHIRP_FFT_INTERP = 128
+    CHIRP_FFT_INTERP = 1
     DELAY = CHIRP_DURATION - CHIRP_REAL_DURATION
     RESAMPLE = False
+
+class Config5(ConfigBase):
+    N_CHIRP = 20
+    CHIRP_DURATION = 25e-3
+    SAMPLES_PER_CH = ConfigBase.calculate_samples_per_ch(CHIRP_DURATION, N_CHIRP)
+    GEN_BW = 5000e6
+    BANDWIDTH = ConfigBase.calculate_bandwidth(GEN_BW)
+    CHIRP_REAL_DURATION = 25.03442e-3
+    RANGE_FFT_INTERP = 8
+    VELOCITY_FFT_INTERP = 1
+    CHIRP_FFT_INTERP = 1
+    FT_DELAY = 1e-6
+    DELAY = CHIRP_DURATION - CHIRP_REAL_DURATION + FT_DELAY
+    RESAMPLE = True
+    t3 = np.load("./sampling_500ksps_15_5000MHz_25ms.npy")
+    Y_RANGE_MIN = 1.95
+    Y_RANGE_MAX = 2.05
+
+
+class Config6(ConfigBase):
+    N_CHIRP = 20
+    CHIRP_DURATION = 0.1e-3
+    SAMPLES_PER_CH = ConfigBase.calculate_samples_per_ch(CHIRP_DURATION, N_CHIRP)
+    GEN_BW = 70e6
+    BANDWIDTH = ConfigBase.calculate_bandwidth(GEN_BW)
+    CHIRP_REAL_DURATION = 0.1007360e-3
+    RANGE_FFT_INTERP = 2
+    VELOCITY_FFT_INTERP = 4
+    CHIRP_FFT_INTERP = 1
+    DELAY = CHIRP_DURATION - CHIRP_REAL_DURATION
+    RESAMPLE = False
+    X_RANGE_MIN = -50
+    # Y_RANGE_MIN = 1
+    X_RANGE_MAX = 50
+
+
 
 # Default configuration
 current_config = Config1
