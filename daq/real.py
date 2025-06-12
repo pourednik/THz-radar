@@ -61,7 +61,7 @@ class RealDAQ(DAQBase):
             self.range,
             self.samples_per_channel,
             self.rate,
-            ScanOption.EXTTRIGGER,
+            ScanOption.EXTTRIGGER,  # External trigger synchronization
             AInScanFlag.DEFAULT,
             self.cdata,
         )

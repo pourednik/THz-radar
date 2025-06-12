@@ -6,7 +6,8 @@ class GenInstrument:
     def __init__(self, address="TCPIP0::192.168.85.202::inst0::INSTR"):
         self.rm = pvs.ResourceManager()
         self.address = address
-        self.gen = self.rm.open_resource(self.address)
+        # self.gen = self.rm.open_resource(self.address)
+        self.gen = None # Initialize to None, will be set in connect()
         self._connected = False  # Track connection status
 
     def connect(self):
@@ -85,10 +86,14 @@ class GenInstrument:
         self.close()
 
     def fire(self):
-        self.connect()
-        self.gen.write(":TRIGger:IMMediate")
-        self.inst_ready()
-        self.close()
+        try:
+            self.connect()
+            self.gen.write(":TRIGger:IMMediate")
+            self.inst_ready()
+        except Exception as e:
+            raise
+        finally:
+            self.close()
 
     def off(self):
         self.connect()

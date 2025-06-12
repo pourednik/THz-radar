@@ -1,51 +1,32 @@
 import numpy as np
 import plotly.graph_objs as go
 
-from config import (
-    N_CHIRP,
-    VELOCITY_FFT_INTERP,
-    CHIRP_DURATION,
-    C,
-    F0,
-    SAMPLE_RATE,
-    RANGE_FFT_INTERP,
-    BANDWIDTH,
-    CHIRP_REAL_DURATION,
-    Y_RANGE_MIN,
-    Y_RANGE_MAX,
-    X_RANGE_MIN,
-    X_RANGE_MAX,
-    PLOT_WIDTH,
-    PLOT_HEIGHT,
-    SAMPLES_PER_CH,
-    CHIRP_FFT_INTERP,
-)
+from config import current_config
 
 
-def create_axes_and_masks():
-    # ...existing code from main.py...
-    x = np.fft.fftshift(np.fft.fftfreq(N_CHIRP * VELOCITY_FFT_INTERP, CHIRP_DURATION))
-    x = C / 2 * 1 / F0 * x
+def create_axes_and_masks(config):
+    """Dynamically create axes and masks based on the given configuration."""
+    x = np.fft.fftshift(np.fft.fftfreq(config.N_CHIRP * config.VELOCITY_FFT_INTERP, config.CHIRP_DURATION))
+    x *= config.C / (2 * config.F0)
     y_full = np.fft.rfftfreq(
-        int(SAMPLE_RATE * CHIRP_DURATION * RANGE_FFT_INTERP), 1 / SAMPLE_RATE
+        int(config.SAMPLE_RATE * config.CHIRP_DURATION * config.RANGE_FFT_INTERP), 1 / config.SAMPLE_RATE
     )
-    y_full = C / 2 * y_full / BANDWIDTH * CHIRP_REAL_DURATION
+    y_full *= config.C / (2 * config.BANDWIDTH) * config.CHIRP_REAL_DURATION
 
-    y_mask = (y_full >= Y_RANGE_MIN) & (y_full <= Y_RANGE_MAX)
-    y = y_full[y_mask]
-    x_limit = min(abs(x[0]), abs(x[-1]), abs(X_RANGE_MIN), abs(X_RANGE_MAX))
+    y_mask = (y_full >= config.Y_RANGE_MIN) & (y_full <= config.Y_RANGE_MAX)
+    x_limit = min(abs(x[0]), abs(x[-1]), abs(config.X_RANGE_MIN), abs(config.X_RANGE_MAX))
     x_mask = (x >= -x_limit) & (x <= x_limit)
-    x_plot = x[x_mask]
-    return x, y_full, y_mask, y, x_limit, x_mask, x_plot
+    return x, y_full, y_mask, y_full[y_mask], x_limit, x_mask, x[x_mask]
 
 
 def create_initial_Z(y, x_plot):
-    # ...existing code from main.py...
+    """Create initial Z data for the plot dynamically."""
     return np.random.normal(loc=0, scale=1, size=(len(y), len(x_plot)))
 
 
 def create_main_plot(x_plot, y, initial_Z):
-    fig_plot = go.Figure(
+    """Create the main plot dynamically."""
+    return go.Figure(
         data=[
             go.Heatmap(
                 z=initial_Z,
@@ -56,77 +37,40 @@ def create_main_plot(x_plot, y, initial_Z):
             )
         ]
     )
-    return fig_plot
 
 
-def add_grid_lines(fig_plot, x_limit):
-    # ...existing code from main.py...
+def add_grid_lines(fig_plot, x_limit, config):
+    """Add grid lines dynamically based on the given configuration."""
     for xv in np.arange(-0.4, 0.6, 0.1):
-        fig_plot.add_shape(
-            type="line",
-            x0=xv,
-            x1=xv,
-            y0=1,
-            y1=3,
-            line=dict(color="grey", width=1),
-            layer="above",
-        )
-    for yv in np.arange(1, 3, 0.2):
-        fig_plot.add_shape(
-            type="line",
-            x0=-0.5,
-            x1=0.5,
-            y0=yv,
-            y1=yv,
-            line=dict(color="gray", width=1),
-            layer="above",
-        )
+        fig_plot.add_shape(type="line", x0=xv, x1=xv, y0=config.Y_RANGE_MIN, y1=config.Y_RANGE_MAX, line=dict(color="grey", width=1), layer="above")
+    for yv in np.arange(config.Y_RANGE_MIN, config.Y_RANGE_MAX, 0.2):
+        fig_plot.add_shape(type="line", x0=-x_limit, x1=x_limit, y0=yv, y1=yv, line=dict(color="gray", width=1), layer="above")
 
 
-def style_main_plot(fig_plot, x_limit, y):
-    # ...existing code from main.py...
+def style_main_plot(fig_plot, x_limit, y, config):
+    """Style the main plot dynamically."""
     fig_plot.update_layout(
         hovermode=False,
-        xaxis=dict(
-            range=[-x_limit, x_limit],
-            title=dict(text="Geschwindigkeit (m/s)", font=dict(size=30)),
-            tickfont=dict(size=30),
-            showgrid=True,
-        ),
-        yaxis=dict(
-            range=[Y_RANGE_MIN, Y_RANGE_MAX],
-            title=dict(text="Distanz (m)", font=dict(size=30)),
-            tickfont=dict(size=30),
-            tickmode="linear",
-            tick0=1,
-            dtick=0.4,
-        ),
-        width=PLOT_WIDTH,
-        height=PLOT_HEIGHT,
+        xaxis=dict(range=[-x_limit, x_limit], title=dict(text="Geschwindigkeit (m/s)", font=dict(size=30)), tickfont=dict(size=30), showgrid=True),
+        yaxis=dict(range=[config.Y_RANGE_MIN, config.Y_RANGE_MAX], title=dict(text="Distanz (m)", font=dict(size=30)), tickfont=dict(size=30), tickmode="linear", tick0=1, dtick=0.4),
+        width=config.PLOT_WIDTH,
+        height=config.PLOT_HEIGHT,
         margin=dict(l=40, r=40, t=50, b=40),
     )
 
 
-def create_chirp_plot():
-    # ...existing code from main.py...
-    fig_plot_chirp = go.Figure(
-        data=[
-            go.Scatter(
-                x=np.arange(int(SAMPLES_PER_CH / N_CHIRP * CHIRP_FFT_INTERP))
-                / (SAMPLE_RATE * CHIRP_FFT_INTERP),
-                y=np.random.randn(int(SAMPLES_PER_CH / N_CHIRP * CHIRP_FFT_INTERP)),
-                mode="lines",
-                name="lines",
-            )
-        ]
-    )
+def create_chirp_plot(config):
+    """Create the chirp plot dynamically based on the given configuration."""
+    x = np.arange(int(config.SAMPLES_PER_CH / config.N_CHIRP * config.CHIRP_FFT_INTERP)) / (config.SAMPLE_RATE * config.CHIRP_FFT_INTERP)
+    y = np.random.randn(len(x))
+    fig_plot_chirp = go.Figure(data=[go.Scatter(x=x, y=y, mode="lines", name="lines")])
     fig_plot_chirp.update_layout(
         hovermode=False,
-        width=900,
-        height=900,
+        width=config.PLOT_WIDTH,
+        height=config.PLOT_HEIGHT,
         margin=dict(l=40, r=40, t=50, b=40),
         xaxis=dict(
-            range=[0, CHIRP_DURATION],
+            range=[0, config.CHIRP_DURATION],  # Dynamically set x-axis range based on chirp duration
             title=dict(text="Zeit (s)", font=dict(size=30)),
             tickfont=dict(size=30),
             showgrid=True,

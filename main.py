@@ -2,48 +2,38 @@ from nicegui import ui
 import numpy as np
 import plotly.graph_objs as go
 import asyncio
-import platform
 import datetime
-import json
-import signal
-import atexit
 
-from config import (
-    SAMPLES_PER_CH,
-    N_CHIRP,
-    SAMPLE_RATE,
-    CHIRP_DURATION,
-    RANGE_FFT_INTERP,
-    VELOCITY_FFT_INTERP,
-    DELAY,
-    CHIRP_FFT_INTERP,
-    BANDWIDTH,
-    CHIRP_REAL_DURATION,
-    GEN_BW,
-    C,
-    USE_DUMMY,
-    USE_WINDOWS,
-)
-
+from config import Config1, Config2, Config3, Config4
 from experiment_manager import ExperimentManager
 from gen import GenInstrument
 
 # ----------- DAQ Driver Selection -----------
-if USE_DUMMY:
-    from daq.dummy import DummyDAQ
-elif USE_WINDOWS:
-    from daq.mcculw_driver import MCCULWDAQ
-else:
-    from daq.real import RealDAQ
-
-
-def get_daq():
-    if USE_DUMMY:
-        return DummyDAQ(SAMPLES_PER_CH, N_CHIRP, CHIRP_DURATION, SAMPLE_RATE)
-    elif USE_WINDOWS:
-        return MCCULWDAQ(SAMPLES_PER_CH, N_CHIRP, CHIRP_DURATION, SAMPLE_RATE)
+def get_daq(config):
+    if config.USE_DUMMY:
+        from daq.dummy import DummyDAQ
+        return DummyDAQ(
+            config.SAMPLES_PER_CH,
+            config.N_CHIRP,
+            config.CHIRP_DURATION,
+            config.SAMPLE_RATE,
+        )
+    elif config.USE_WINDOWS:
+        from daq.mcculw_driver import MCCULWDAQ
+        return MCCULWDAQ(
+            config.SAMPLES_PER_CH,
+            config.N_CHIRP,
+            config.CHIRP_DURATION,
+            config.SAMPLE_RATE,
+        )
     else:
-        return RealDAQ(SAMPLES_PER_CH, N_CHIRP, CHIRP_DURATION, SAMPLE_RATE)
+        from daq.real import RealDAQ
+        return RealDAQ(
+            config.SAMPLES_PER_CH,
+            config.N_CHIRP,
+            config.CHIRP_DURATION,
+            config.SAMPLE_RATE,
+        )
 
 
 # --- Import helper modules ---
@@ -59,12 +49,27 @@ from plot_helpers import (
 # --- Main page handler (now mostly pseudo code) ---
 
 
+async def update_config(selected_config):
+    """Update the configuration dynamically."""
+    if selected_config == "Config1":
+        return Config1
+    elif selected_config == "Config2":
+        return Config2
+    elif selected_config == "Config3":
+        return Config3
+    elif selected_config == "Config4":
+        return Config4
+
+
 @ui.page("/")
 async def main():
     print(f"[{datetime.datetime.now().isoformat()}] Page accessed or refreshed!")
 
+    # Initialize configuration
+    current_config = Config1
+
     # 1. Calculate axes and masks
-    x, y_full, y_mask, y, x_limit, x_mask, x_plot = create_axes_and_masks()
+    x, y_full, y_mask, y, x_limit, x_mask, x_plot = create_axes_and_masks(current_config)
 
     # 2. Create initial Z data for plot
     initial_Z = create_initial_Z(y, x_plot)
@@ -73,24 +78,48 @@ async def main():
     fig_plot = create_main_plot(x_plot, y, initial_Z)  # Pass False for ScatterGL
 
     # 4. Add grid lines and style plot
-    add_grid_lines(fig_plot, x_limit)
-    style_main_plot(fig_plot, x_limit, y)
+    add_grid_lines(fig_plot, x_limit, current_config)
+    style_main_plot(fig_plot, x_limit, y, current_config)
 
     # 5. Create chirp plot
-    fig_plot_chirp = create_chirp_plot()
+    fig_plot_chirp = create_chirp_plot(current_config)
 
-    # 6. Layout UI
+    # # 6. Layout UI
+    # async def on_config_change(event):
+    #     """Handle configuration change dynamically."""
+    #     nonlocal current_config
+    #     current_config = await update_config(event.value)
+        
+    #     # Recreate axes and masks based on the updated configuration
+    #     x, y_full, y_mask, y, x_limit, x_mask, x_plot = create_axes_and_masks(current_config)
+        
+    #     # Recreate main plot
+    #     initial_Z = create_initial_Z(y, x_plot)
+    #     fig_plot = create_main_plot(x_plot, y, initial_Z)
+    #     add_grid_lines(fig_plot, x_limit, current_config)
+    #     style_main_plot(fig_plot, x_limit, y, current_config)
+    #     plot_widget.figure = fig_plot  # Update the figure property directly
+        
+    #     # Recreate chirp plot
+    #     fig_plot_chirp = create_chirp_plot(current_config)
+    #     plot_widget2.figure = fig_plot_chirp  # Update the chirp plot widget
+
+    with ui.row():
+        ui.label("Select Configuration:")
+        config_dropdown = ui.select(
+            options=["Config1", "Config2", "Config3", "Config4"],
+            value="Config1",
+            # on_change=on_config_change,
+        )
+
     with ui.row():
         plot_widget = ui.plotly(fig_plot)
         plot_widget2 = ui.plotly(fig_plot_chirp)
 
     # --- Initialize generator after figures ---
     gen = GenInstrument()
-    chirp_t = CHIRP_DURATION  # Set this appropriately
-    BW = GEN_BW  # Set this appropriately
-    # chirp_t = 0.2e-3  # Set this appropriately
-    # BW = 140e6       # Set this appropriately
-
+    chirp_t = current_config.CHIRP_DURATION
+    BW = current_config.GEN_BW
     gen.init(chirp_t, BW)
 
     daq_ctx = {"daq": None, "data_task": None, "plot_task": None}
@@ -100,13 +129,34 @@ async def main():
         if running["flag"]:
             return
         running["flag"] = True
-        gen.on()  # Turn on generator before DAQ starts
 
-        # Pass gen to ExperimentManager
-        daq_ctx["daq"] = ExperimentManager(get_daq(), gen)
+        selected_config = config_dropdown.value
+        current_config = await update_config(selected_config)
+        
+        x, y_full, y_mask, y, x_limit, x_mask, x_plot = create_axes_and_masks(current_config)
+        # Recreate main plot
+        initial_Z = create_initial_Z(y, x_plot)
+        fig_plot = create_main_plot(x_plot, y, initial_Z)
+        add_grid_lines(fig_plot, x_limit, current_config)
+        style_main_plot(fig_plot, x_limit, y, current_config)
+        plot_widget.figure = fig_plot  # Update the figure property directly
+        
+        # Recreate chirp plot
+        fig_plot_chirp = create_chirp_plot(current_config)
+        plot_widget2.figure = fig_plot_chirp  # Update the chirp plot widget
+    
+        gen = GenInstrument()
+        chirp_t = current_config.CHIRP_DURATION
+        BW = current_config.GEN_BW
+        gen.init(chirp_t, BW)
+
+        gen.on()
+
+        daq_ctx["daq"] = ExperimentManager(get_daq(current_config), gen, current_config)
         await daq_ctx["daq"].__aenter__()
         daq_ctx["daq"].stop_event.clear()
-        daq_ctx["data_task"] = asyncio.create_task(daq_ctx["daq"].get_data_loop())
+
+        daq_ctx["data_task"] = asyncio.create_task(daq_ctx["daq"].data_handling_loop())
         daq_ctx["plot_task"] = asyncio.create_task(
             daq_ctx["daq"].update_plot_loop(
                 fig_plot,
@@ -121,6 +171,8 @@ async def main():
         )
 
     async def stop_tasks():
+        if not running["flag"]:
+            return
         running["flag"] = False
         try:
             if daq_ctx["daq"]:
