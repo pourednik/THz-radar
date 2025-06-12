@@ -1,15 +1,29 @@
 import numpy as np
 import asyncio
 from config import (
-    SAMPLES_PER_CH, N_CHIRP, SAMPLE_RATE, CHIRP_DURATION, RANGE_FFT_INTERP,
-    VELOCITY_FFT_INTERP, DELAY, CHIRP_FFT_INTERP, BANDWIDTH, CHIRP_REAL_DURATION, C
+    SAMPLES_PER_CH,
+    N_CHIRP,
+    SAMPLE_RATE,
+    CHIRP_DURATION,
+    RANGE_FFT_INTERP,
+    VELOCITY_FFT_INTERP,
+    DELAY,
+    CHIRP_FFT_INTERP,
+    BANDWIDTH,
+    CHIRP_REAL_DURATION,
+    C,
+    t3,
 )
+
 
 class ExperimentManager:
     def __init__(self, daq, gen):
         self.daq = daq
         self.gen = gen  # Optional generator instrument
-        self.data_shape = (int(SAMPLES_PER_CH / N_CHIRP / 2 + 1) * RANGE_FFT_INTERP, N_CHIRP*VELOCITY_FFT_INTERP)
+        self.data_shape = (
+            int(SAMPLES_PER_CH / N_CHIRP / 2 * RANGE_FFT_INTERP + 1),
+            N_CHIRP * VELOCITY_FFT_INTERP,
+        )
         self.data = np.zeros(self.data_shape)
         self.data_chirp = np.zeros(int(SAMPLES_PER_CH / N_CHIRP))
         self.stop_event = asyncio.Event()
@@ -21,7 +35,7 @@ class ExperimentManager:
     def _init_fft_windows(self, chirp_len, n_chirp):
         self.fft_size = chirp_len * RANGE_FFT_INTERP
         self.n_chirp = n_chirp * VELOCITY_FFT_INTERP
-        self.freq_bins = np.fft.fftfreq(chirp_len, 1/SAMPLE_RATE)
+        self.freq_bins = np.fft.fftfreq(chirp_len, 1 / SAMPLE_RATE)
         self.window_time = np.hamming(chirp_len)[:, np.newaxis]
         self.window_chirp = np.hamming(n_chirp)[np.newaxis, :]
         self._fft_initialized = True
@@ -46,6 +60,7 @@ class ExperimentManager:
             print("Cleanup error:", e)
 
     async def get_data_loop(self):
+        saved = 0
         try:
             while not self.stop_event.is_set():
                 self.rate = self.daq.a_in_scan()
@@ -57,9 +72,9 @@ class ExperimentManager:
 
                 if self.gen is not None:
                     self.gen.connect()  # Ensure generator is connected
-                    self.gen.fire()     # Fire after a_in_scan
-                    self.gen.close()    # Close generator connection
-                
+                    self.gen.fire()  # Fire after a_in_scan
+                    self.gen.close()  # Close generator connection
+
                 status = self.daq.get_scan_status()
                 while status != 0 and not self.stop_event.is_set():
                     status = self.daq.get_scan_status()
@@ -67,7 +82,7 @@ class ExperimentManager:
                 self.status = status
 
                 arr = self.daq.get_data_array()
-                
+
                 chirp_len = int(CHIRP_DURATION * self.rate)
                 if (
                     not self._fft_initialized
@@ -90,9 +105,22 @@ class ExperimentManager:
                     Vp[:, i] *= np.exp(-1j * self.freq_bins * 2 * np.pi * DELAY * i)
                 voltages_corr = np.real(np.fft.ifft(Vp, axis=0))
 
-                windowed = (
-                    voltages_corr[:chirp_len, :] * self.window_time
-                )
+                # if saved == 0:
+                #     saved = 1
+                #     np.save("ref.npy", voltages_corr[:, 10])
+
+                try:
+                    for i in range(N_CHIRP):
+                        voltages_corr[:, i] = np.interp(
+                            t3,
+                            np.arange(voltages_corr[:, i].size) / SAMPLE_RATE,
+                            voltages_corr[:, i],
+                        )
+                except Exception as e:
+                    print(f"Error accessing data: {e}")
+                    pass
+
+                windowed = voltages_corr[:chirp_len, :] * self.window_time
                 V = np.fft.rfft(windowed, axis=0, n=self.fft_size)
                 VV = np.fft.fft(V * self.window_chirp, axis=1, n=self.n_chirp)
                 VV = np.fft.fftshift(VV, axes=1)
@@ -116,7 +144,7 @@ class ExperimentManager:
                 # print(temp.size)
                 # temp = temp / np.max(temp)
                 self.data_chirp = temp
-                await asyncio.sleep(0.08)
+                # await asyncio.sleep(0.01)
         except Exception as e:
             # if self.gen is not None:
             #     self.gen.off()
@@ -135,7 +163,10 @@ class ExperimentManager:
     ):
         while not self.stop_event.is_set():
             # try:
+            #     print(y_mask.size)
+            #     print(self.data.shape)
             #     print(self.data[y_mask, :][:, x_mask])
+            #     print("calc")
             # except Exception as e:
             #     print(f"Error accessing data: {e}")
             #     await asyncio.sleep(0.05)
@@ -153,5 +184,3 @@ class ExperimentManager:
             finally:
                 self.update_in_progress = False
             await asyncio.sleep(0.1)
-
-

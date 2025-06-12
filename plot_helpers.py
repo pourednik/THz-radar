@@ -2,10 +2,25 @@ import numpy as np
 import plotly.graph_objs as go
 
 from config import (
-    N_CHIRP, VELOCITY_FFT_INTERP, CHIRP_DURATION, C, F0, SAMPLE_RATE,
-    RANGE_FFT_INTERP, BANDWIDTH, CHIRP_REAL_DURATION, Y_RANGE_MIN, Y_RANGE_MAX,
-    X_RANGE_MIN, X_RANGE_MAX, PLOT_WIDTH, PLOT_HEIGHT, SAMPLES_PER_CH, CHIRP_FFT_INTERP
+    N_CHIRP,
+    VELOCITY_FFT_INTERP,
+    CHIRP_DURATION,
+    C,
+    F0,
+    SAMPLE_RATE,
+    RANGE_FFT_INTERP,
+    BANDWIDTH,
+    CHIRP_REAL_DURATION,
+    Y_RANGE_MIN,
+    Y_RANGE_MAX,
+    X_RANGE_MIN,
+    X_RANGE_MAX,
+    PLOT_WIDTH,
+    PLOT_HEIGHT,
+    SAMPLES_PER_CH,
+    CHIRP_FFT_INTERP,
 )
+
 
 def create_axes_and_masks():
     # ...existing code from main.py...
@@ -23,9 +38,11 @@ def create_axes_and_masks():
     x_plot = x[x_mask]
     return x, y_full, y_mask, y, x_limit, x_mask, x_plot
 
+
 def create_initial_Z(y, x_plot):
     # ...existing code from main.py...
     return np.random.normal(loc=0, scale=1, size=(len(y), len(x_plot)))
+
 
 def create_main_plot(x_plot, y, initial_Z):
     fig_plot = go.Figure(
@@ -40,6 +57,7 @@ def create_main_plot(x_plot, y, initial_Z):
         ]
     )
     return fig_plot
+
 
 def add_grid_lines(fig_plot, x_limit):
     # ...existing code from main.py...
@@ -64,6 +82,7 @@ def add_grid_lines(fig_plot, x_limit):
             layer="above",
         )
 
+
 def style_main_plot(fig_plot, x_limit, y):
     # ...existing code from main.py...
     fig_plot.update_layout(
@@ -87,6 +106,7 @@ def style_main_plot(fig_plot, x_limit, y):
         margin=dict(l=40, r=40, t=50, b=40),
     )
 
+
 def create_chirp_plot():
     # ...existing code from main.py...
     fig_plot_chirp = go.Figure(
@@ -106,6 +126,7 @@ def create_chirp_plot():
         height=900,
         margin=dict(l=40, r=40, t=50, b=40),
         xaxis=dict(
+            range=[0, CHIRP_DURATION],
             title=dict(text="Zeit (s)", font=dict(size=30)),
             tickfont=dict(size=30),
             showgrid=True,

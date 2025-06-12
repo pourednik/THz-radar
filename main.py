@@ -19,6 +19,7 @@ from config import (
     CHIRP_FFT_INTERP,
     BANDWIDTH,
     CHIRP_REAL_DURATION,
+    GEN_BW,
     C,
     USE_DUMMY,
     USE_WINDOWS,
@@ -34,6 +35,7 @@ elif USE_WINDOWS:
     from daq.mcculw_driver import MCCULWDAQ
 else:
     from daq.real import RealDAQ
+
 
 def get_daq():
     if USE_DUMMY:
@@ -55,6 +57,7 @@ from plot_helpers import (
 )
 
 # --- Main page handler (now mostly pseudo code) ---
+
 
 @ui.page("/")
 async def main():
@@ -83,9 +86,10 @@ async def main():
 
     # --- Initialize generator after figures ---
     gen = GenInstrument()
-    chirp_t = 0.6e-3  # Set this appropriately
-    chirp_t = 0.2e-3  # Set this appropriately
-    BW = 140e6       # Set this appropriately
+    chirp_t = CHIRP_DURATION  # Set this appropriately
+    BW = GEN_BW  # Set this appropriately
+    # chirp_t = 0.2e-3  # Set this appropriately
+    # BW = 140e6       # Set this appropriately
 
     gen.init(chirp_t, BW)
 
@@ -151,10 +155,11 @@ async def main():
 
     toggle_button = ui.button("▶ Start", on_click=toggle)
 
-
     # # 9. Show info labels
     # ui.label(
     #     f"RANGE_FFT_INTERP: {config.RANGE_FFT_INTERP}, VELOCITY_FFT_INTERP: {config.VELOCITY_FFT_INTERP}"
     # )
 
+
 ui.run(title="RADAR", favicon="📡")
+

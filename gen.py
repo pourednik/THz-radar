@@ -1,8 +1,9 @@
 import pyvisa as pvs
 import time
 
+
 class GenInstrument:
-    def __init__(self, address='TCPIP0::192.168.85.202::inst0::INSTR'):
+    def __init__(self, address="TCPIP0::192.168.85.202::inst0::INSTR"):
         self.rm = pvs.ResourceManager()
         self.address = address
         self.gen = self.rm.open_resource(self.address)
@@ -38,62 +39,62 @@ class GenInstrument:
     #             print(f"Error closing instrument: {e}")
 
     def inst_ready(self):
-        while not self.gen.query('*OPC?'):
+        while not self.gen.query("*OPC?"):
             time.sleep(0.1)
-            print('waiting')
+            print("waiting")
         return 1
 
     def init(self, chirp_t, BW):
         self.connect()
-        self.gen.write(':OUTPut 0')
-        self.gen.write(':POW 10 dBm')
+        self.gen.write(":OUTPut 0")
+        self.gen.write(":POW 10 dBm")
         self.inst_ready()
-        self.gen.write(':FREQ 15 GHz')
+        self.gen.write(":FREQ 15 GHz")
         self.inst_ready()
-        self.gen.write(':LFOutput:SOURce TRIGger')
+        self.gen.write(":LFOutput:SOURce TRIGger")
         self.inst_ready()
-        self.gen.write(':LFOutput:STATe 1')
+        self.gen.write(":LFOutput:STATe 1")
         self.inst_ready()
-        self.gen.write(':CHIRp:BLANking 1')
+        self.gen.write(":CHIRp:BLANking 1")
         self.inst_ready()
-        self.gen.write(':CHIRp:COUNt 20')
+        self.gen.write(":CHIRp:COUNt 20")
         self.inst_ready()
-        self.gen.write(':CHIRp:TIME ' + str(chirp_t))
+        self.gen.write(":CHIRp:TIME " + str(chirp_t))
         self.inst_ready()
-        self.gen.write(':FREQuency:CENTer 15 GHz')
+        self.gen.write(":FREQuency:CENTer 15 GHz")
         self.inst_ready()
-        self.gen.write('FREQuency:MODE FIXed')
+        self.gen.write("FREQuency:MODE FIXed")
         self.inst_ready()
-        self.gen.write(':FREQuency:SPAN ' + str(BW))
+        self.gen.write(":FREQuency:SPAN " + str(BW))
         self.inst_ready()
-        self.gen.write(':TRIGger:SOURce BUS')
+        self.gen.write(":TRIGger:SOURce BUS")
         self.inst_ready()
-        self.gen.write('FREQuency:MODE CHIRp')
+        self.gen.write("FREQuency:MODE CHIRp")
         self.inst_ready()
-        print(self.gen.query(':CHIRp:TIME?'))
-        self.gen.write('FREQuency:MODE FIXed')
+        print(self.gen.query(":CHIRp:TIME?"))
+        self.gen.write("FREQuency:MODE FIXed")
         self.inst_ready()
         self.close()
 
     def on(self):
         self.connect()
-        self.gen.write(':OUTPut 1')
+        self.gen.write(":OUTPut 1")
         self.inst_ready()
-        self.gen.write('FREQuency:MODE CHIRp')
+        self.gen.write("FREQuency:MODE CHIRp")
         self.inst_ready()
         self.close()
 
     def fire(self):
         self.connect()
-        self.gen.write(':TRIGger:IMMediate')
+        self.gen.write(":TRIGger:IMMediate")
         self.inst_ready()
         self.close()
 
     def off(self):
         self.connect()
-        self.gen.write(':OUTPut 0')
+        self.gen.write(":OUTPut 0")
         self.inst_ready()
-        self.gen.write('FREQuency:MODE FIXed')
+        self.gen.write("FREQuency:MODE FIXed")
         self.inst_ready()
         self.close()
 
@@ -107,9 +108,11 @@ class GenInstrument:
             self.gen.close()
             self._connected = False
 
+
 # Example usage:
 # with GenInstrument() as gen:
 #     gen.init(chirp_t, BW)
 #     gen.on()
 #     gen.fire()
 #     gen.off()
+
